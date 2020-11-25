@@ -123,13 +123,11 @@ def check_status(conn, first_id: int, second_id: int):
     # Проверка, возможно ли связать этих двух пользователллей в
     # очереди, подходят ли они по все параметрам
     if check_change(first_id=first_id, second_id=second_id):
-        print('d')
         c = conn.cursor()
         c.execute(
             'SELECT EXISTS(SELECT * FROM queue WHERE (second_id=? AND first_id=?) OR (first_id=? AND second_id=?))',
             (first_id, second_id, first_id, second_id))
         value = c.fetchall()[0][0]
-        print(value)
         return value
     else:
         return False
@@ -142,7 +140,6 @@ def check_change(conn, first_id: int,
     first_change = False
     c.execute('SELECT change FROM users WHERE user_id=?', (first_id,))
     change = c.fetchone()[0]
-    print(change)
     if not change == "Всех":
         if change == "Мужчин":
             c.execute('SELECT EXISTS(SELECT * FROM users WHERE user_id=? AND gender = "Мужчина")', (second_id,))
@@ -159,11 +156,9 @@ def check_change(conn, first_id: int,
                 return False
     else:
         first_change = True
-    print(first_change)
     second_change = False
     c.execute('SELECT change FROM users WHERE user_id=?', (second_id,))
     change = c.fetchone()[0]
-    print(change)
     if not change == "Всех":
         if change == "Мужчин":
             c.execute('SELECT EXISTS(SELECT * FROM users WHERE user_id=? AND gender = "Мужчина")', (first_id,))
@@ -180,7 +175,6 @@ def check_change(conn, first_id: int,
                 return False
     else:
         second_change = True
-    print(second_change)
     if second_change and first_change:
         return True
     else:
