@@ -155,9 +155,6 @@ def search_partner(message):
         success = False
         if not select:
             add_user(first_id=message.from_user.id)
-           # while(not check_open(first_id=message.from_user.id)):
-            #    continue
-           # bot.register_next_step_handler(message, chat)
         else:
             for sel in select:
                 print(message.from_user.id)
