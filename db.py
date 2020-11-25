@@ -4,6 +4,11 @@ __connection = None
 
 
 def ensure_connections(func):
+    """ Декоратор для подключения к СУБД: открывает соединение,
+            выполняет переданную функцию и закрывает за собой соединение.
+            Потокобезопасно!
+        """
+
     def inner(*args, **kwargs):
         with sqlite3.connect('users.db') as conn:
             res = func(*args, conn=conn, **kwargs)
@@ -14,6 +19,11 @@ def ensure_connections(func):
 
 @ensure_connections
 def init_db(conn, force: bool = False):
+    """ Проверить существование таблицы а иначе пересоздать её
+
+           :param conn: подключение к СУБД
+           :param force: явно пересоздать все таблицы
+       """
     c = conn.cursor()
     if force:
         c.execute('DROP TABLE IF EXISTS users')
@@ -27,31 +37,35 @@ def init_db(conn, force: bool = False):
             change     STRING NOT NULL
         )
     ''')
-
+    # Сохранить изменения
     conn.commit()
 
 
 @ensure_connections
-def reg_db(conn, user_id: int, name: str, old: int, gender: str, change: str):
+def reg_db(conn, user_id: int, name: str, old: int, gender: str,
+           change: str):  # Добавление пользователя в таблицу users
     c = conn.cursor()
     c.execute('INSERT INTO users (user_id, name, old, gender, change) VALUES (?,?,?,?,?)',
               (user_id, name, old, gender, change))
     conn.commit()
 
-@ensure_connections
-def edit_db(conn, user_id: int, name: str, old: int, gender: str, change: str):
-    c = conn.cursor()
-    c.execute('UPDATE users SET name=?,old=?,gender=?,change=? WHERE user_id = ?',(name, old, gender, change,user_id))
-    conn.commit()
 
 @ensure_connections
-def check_user(conn, user_id: int):
+def edit_db(conn, user_id: int, name: str, old: int, gender: str,
+            change: str):  # Пересоздание пользователя по user_id в таблицу users
+    c = conn.cursor()
+    c.execute('UPDATE users SET name=?,old=?,gender=?,change=? WHERE user_id = ?', (name, old, gender, change, user_id))
+    conn.commit()
+
+
+@ensure_connections
+def check_user(conn, user_id: int):  # Проверка существования пользователя с данным user_id
     c = conn.cursor()
     c.execute('SELECT EXISTS(SELECT * FROM users WHERE user_id = ?)', (user_id,))
     return c.fetchone()
 
 
-@ensure_connections
+@ensure_connections  # Удаление пользователя из таблицы users
 def delete_user(conn, user_id: int):
     c = conn.cursor()
     c.execute('DELETE FROM users WHERE user_id=?', (user_id,))
@@ -59,7 +73,7 @@ def delete_user(conn, user_id: int):
 
 
 @ensure_connections
-def get_info(conn, user_id: int):
+def get_info(conn, user_id: int):  # Получение всей информации о пользователе из таблицы users
     c = conn.cursor()
     c.execute('SELECT * FROM users WHERE user_id=?', (user_id,))
     return c.fetchone()
@@ -67,6 +81,11 @@ def get_info(conn, user_id: int):
 
 @ensure_connections
 def init_queue(conn, force: bool = False):
+    """ Проверить существование таблицы а иначе пересоздать её
+
+               :param conn: подключение к СУБД
+               :param force: явно пересоздать все таблицы
+           """
     c = conn.cursor()
     if force:
         c.execute('DROP TABLE IF EXISTS queue')
@@ -81,21 +100,21 @@ def init_queue(conn, force: bool = False):
 
 
 @ensure_connections
-def add_user(conn, first_id: int):
+def add_user(conn, first_id: int):  # Добавление первого пользователя в очередь
     c = conn.cursor()
-    c.execute('INSERT INTO queue (first_id) VALUES (?)', (first_id, ))
+    c.execute('INSERT INTO queue (first_id) VALUES (?)', (first_id,))
     conn.commit()
 
 
 @ensure_connections
-def select_free(conn):
+def select_free(conn):  # Поиск пользователя, у которого нет парнёра в очереди
     c = conn.cursor()
     c.execute('SELECT first_id FROM queue WHERE second_id IS NULL or second_id = "" and first_id IS NOT NULL')
     return c.fetchall()
 
 
 @ensure_connections
-def add_second_user(conn, first_id: int, second_id: int):
+def add_second_user(conn, first_id: int, second_id: int):  # Добавление второго пользователя в очередь
     c = conn.cursor()
     c.execute('UPDATE queue SET second_id=?,status = "Open" WHERE first_id=?', (second_id, first_id))
     conn.commit()
@@ -103,6 +122,8 @@ def add_second_user(conn, first_id: int, second_id: int):
 
 @ensure_connections
 def check_status(conn, first_id: int, second_id: int):
+    # Проверка, возможно ли связать этих двух пользователллей в
+    # очереди, подходят ли они по все параметрам
     if check_change(first_id=first_id, second_id=second_id):
         c = conn.cursor()
         c.execute(
@@ -114,7 +135,8 @@ def check_status(conn, first_id: int, second_id: int):
 
 
 @ensure_connections
-def check_change(conn, first_id: int, second_id: int):
+def check_change(conn, first_id: int,
+                 second_id: int):  # Проверка на совместимость типа поиска и гендера двух пользователей
     c = conn.cursor()
     first_change = False
     c.execute('SELECT change FROM users WHERE user_id=?', (first_id,))
@@ -165,34 +187,36 @@ def check_change(conn, first_id: int, second_id: int):
 
 
 @ensure_connections
-def check_companion(conn, first_id: int):
+def check_companion(conn, first_id: int):  # Получение id пользователя с которым он связан из очереди
     c = conn.cursor()
     c.execute(
         'SELECT first_id,second_id FROM queue WHERE( second_id=? OR first_id=? )AND status = "Open"',
         (first_id, first_id))
-    change = c.fetchall()
-    print(change)
+    companion_id = c.fetchall()
 
-    if first_id == change[0][0]:
-        return change[0][1]
+    if first_id == companion_id[0][0]:
+        return companion_id[0][1]
     else:
-        return change[0][0]
+        return companion_id[0][0]
+
 
 @ensure_connections
-def check_open(conn, first_id: int):
+def check_open(conn, first_id: int):  # Проверяет есть ли у пользователя открытый диалог в таблицу queue
     c = conn.cursor()
-    c.execute('SELECT EXISTS (SELECT * FROM queue WHERE first_id=? AND status = "Open" OR second_id=? AND status = "Open" ORDER BY id DESC LIMIT 1)', (first_id,first_id ))
+    c.execute(
+        'SELECT EXISTS (SELECT * FROM queue WHERE first_id=? AND status = "Open" OR second_id=? AND status = "Open" ORDER BY id DESC LIMIT 1)',
+        (first_id, first_id))
     return c.fetchall()
 
-@ensure_connections
-def close_chat(conn, first_id: int):
-    c = conn.cursor()
-    c = conn.execute('UPDATE queue SET status="Close" WHERE first_id=? or second_id=? and status = "Open"', (first_id,first_id ))
-    conn.commit()
 
+@ensure_connections
+def close_chat(conn, first_id: int):  # Меняет статус на закрыто, что значит, что их общение прекращено
+    c = conn.cursor()
+    c = conn.execute('UPDATE queue SET status="Close" WHERE first_id=? or second_id=? and status = "Open"',
+                     (first_id, first_id))
+    conn.commit()
 
 
 if __name__ == '__main__':
     init_db()
     init_queue()
-
