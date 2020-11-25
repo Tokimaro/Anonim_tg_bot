@@ -123,11 +123,14 @@ def check_status(conn, first_id: int, second_id: int):
     # Проверка, возможно ли связать этих двух пользователллей в
     # очереди, подходят ли они по все параметрам
     if check_change(first_id=first_id, second_id=second_id):
+        print('d')
         c = conn.cursor()
         c.execute(
             'SELECT EXISTS(SELECT * FROM queue WHERE (second_id=? AND first_id=?) OR (first_id=? AND second_id=?))',
             (first_id, second_id, first_id, second_id))
-        return c.fetchall()
+        value = c.fetchall()[0][0]
+        print(value)
+        return value
     else:
         return False
 
@@ -218,3 +221,4 @@ def close_chat(conn, first_id: int):  # Меняет статус на закр�
 if __name__ == '__main__':
     init_db()
     init_queue()
+

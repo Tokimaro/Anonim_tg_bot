@@ -42,6 +42,9 @@ def welcome(
         bot.send_message(message.from_user.id, "Введите ваше имя:")
         bot.register_next_step_handler(message, reg_name)
 
+@bot.message_handler(content_types=['text'])
+def text_reac(message):  # реакция на любое сообщение, которое не является командой
+    bot.send_message(message.chat.id, 'Неизвестная команда')
 
 def reg_name(message):  # Регистрация имени
     if message.text != '':
@@ -122,6 +125,7 @@ def search_prof(message):  # Отображение профиля, с возм�
     if (message.text == u'Начать поиск') or (message.text == u'Посмотреть профиль') or (
             message.text == u'Удалить профиль'):
         if message.text == u'Начать поиск':
+            bot.send_message(message.from_user.id, 'Поиск начался')
             search_partner(message)
         elif message.text == u'Посмотреть профиль':
             user_info = get_info(user_id=message.from_user.id)
@@ -143,7 +147,7 @@ def search_prof(message):  # Отображение профиля, с возм�
 
 def search_partner(message):  # Поиск партнёра, если парнёр найден, отоюражает данные о нём и начинается чатинг
     is_open = check_open(first_id=message.from_user.id)
-    if is_open[0][0]:
+    if is_open[0][0]:  # если уже имеется открытый чат, сразу переходит в чаттинг
         bot.register_next_step_handler(message, chat)
 
     else:
@@ -153,11 +157,13 @@ def search_partner(message):  # Поиск партнёра, если парнё
             add_user(first_id=message.from_user.id)
         else:
             for sel in select:
-
-                if not check_status(first_id=message.from_user.id, second_id=sel[0]) or message.from_user.id == sel[0]:
+                if check_status(first_id=message.from_user.id, second_id=sel[0]) or message.from_user.id == sel[0]:
+                    print('da sel')
                     continue
 
                 else:
+                    print(sel[0])
+                    print(message.from_user.id)
                     add_second_user(first_id=sel[0], second_id=message.from_user.id)
                     bot.send_message(message.from_user.id, 'Мы нашли вам собеседника')
                     user_info = get_info(user_id=sel[0])
