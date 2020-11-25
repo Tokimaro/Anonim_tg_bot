@@ -1,7 +1,5 @@
 import sqlite3
 
-__connection = None
-
 
 def ensure_connections(func):
     """ Декоратор для подключения к СУБД: открывает соединение,
